@@ -27,9 +27,9 @@
     <artifactId>parent-platform-distribution</artifactId>
     <version>11.3.7</version>
   </parent>
-  <artifactId>wiki-packager-plugin</artifactId>
+  <artifactId>wiki-packager-maven-plugin</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <name>Wiki Packager plugin</name>
+  <name>Wiki Packager maven plugin</name>
   <packaging>maven-plugin</packaging>
   <description>Maven plugin for pre-packaging an XWiki instance</description>
   <properties>
@@ -38,9 +38,9 @@
     <xwiki.issueManagement.url>https://jira.xwiki.org/browse/WPP</xwiki.issueManagement.url>
   </properties>
   <scm>
-    <connection>scm:git:git://github.com/xwiki-contrib/wiki-packager-plugin.git</connection>
-    <developerConnection>scm:git:git@github.com/xwiki-contrib/wiki-packager-plugin.git</developerConnection>
-    <url>https://github.com/xwiki-contrib/wiki-packager-plugin/tree/master</url>
+    <connection>scm:git:git://github.com/xwiki-contrib/wiki-packager-maven-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com/xwiki-contrib/wiki-packager-maven-plugin.git</developerConnection>
+    <url>https://github.com/xwiki-contrib/wiki-packager-maven-plugin/tree/master</url>
     <tag>HEAD</tag>
   </scm>
   <developers>
