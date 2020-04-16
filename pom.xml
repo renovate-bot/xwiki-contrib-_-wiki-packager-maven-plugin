@@ -28,7 +28,7 @@
     <version>11.3.7</version>
   </parent>
   <artifactId>wiki-packager-maven-plugin</artifactId>
-  <version>1.0</version>
+  <version>1.1-SNAPSHOT</version>
   <name>Wiki Packager maven plugin</name>
   <packaging>maven-plugin</packaging>
   <description>Maven plugin for pre-packaging an XWiki instance</description>
@@ -41,7 +41,7 @@
     <connection>scm:git:git://github.com/xwiki-contrib/wiki-packager-maven-plugin.git</connection>
     <developerConnection>scm:git:git@github.com:xwiki-contrib/wiki-packager-maven-plugin.git</developerConnection>
     <url>https://github.com/xwiki-contrib/wiki-packager-maven-plugin/tree/master</url>
-    <tag>wiki-packager-maven-plugin-1.0</tag>
+    <tag>HEAD</tag>
   </scm>
   <developers>
     <developer>
