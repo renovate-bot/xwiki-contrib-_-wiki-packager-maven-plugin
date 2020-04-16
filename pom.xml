@@ -39,7 +39,7 @@
   </properties>
   <scm>
     <connection>scm:git:git://github.com/xwiki-contrib/wiki-packager-maven-plugin.git</connection>
-    <developerConnection>scm:git:git@github.com/xwiki-contrib/wiki-packager-maven-plugin.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:xwiki-contrib/wiki-packager-maven-plugin.git</developerConnection>
     <url>https://github.com/xwiki-contrib/wiki-packager-maven-plugin/tree/master</url>
     <tag>HEAD</tag>
   </scm>
