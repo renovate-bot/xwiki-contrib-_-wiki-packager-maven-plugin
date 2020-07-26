@@ -20,7 +20,6 @@
 package org.xwiki.contrib.packager;
 
 import java.io.File;
-import java.util.EventListener;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -28,18 +27,17 @@ import javax.inject.Singleton;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.xwiki.component.annotation.Component;
 import org.xwiki.component.embed.EmbeddableComponentManager;
-import org.xwiki.component.internal.multi.ComponentManagerManager;
 import org.xwiki.component.manager.ComponentManager;
 import org.xwiki.component.wiki.internal.DefaultWikiComponentManagerEventListener;
 import org.xwiki.context.Execution;
 import org.xwiki.context.ExecutionContext;
 import org.xwiki.context.ExecutionContextManager;
-import org.xwiki.eventstream.store.internal.DocumentEventListener;
 import org.xwiki.job.Job;
 import org.xwiki.job.JobException;
 import org.xwiki.job.JobExecutor;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.DocumentReferenceResolver;
+import org.xwiki.observation.ObservationManager;
 import org.xwiki.platform.wiki.creationjob.WikiCreationRequest;
 
 import com.xpn.xwiki.web.Utils;
@@ -61,16 +59,13 @@ public class WikiHelper implements AutoCloseable
     private ComponentManager componentManager;
 
     @Inject
+    private ObservationManager observationManager;
+
+    @Inject
     private DocumentReferenceResolver<String> stringDocumentReferenceResolver;
 
     @Inject
     private JobExecutor jobExecutor;
-
-    @Inject
-    private ExecutionContextManager ecim;
-
-    @Inject
-    private ComponentManagerManager componentManagerManager;
 
     private File hibernateConfig;
 
@@ -169,14 +164,21 @@ public class WikiHelper implements AutoCloseable
     }
 
     /**
+     * @return the injected job executor
+     */
+    public JobExecutor getJobExecutor()
+    {
+        return jobExecutor;
+    }
+
+    /**
      * Unregister some listeners triggering the evaluation of velocity code upon extension installation.
      * The evaluation of velocity code implies a servlet context for the Velocity engine, which we don't have.
      */
     public void nukeListeners()
     {
-        componentManager.unregisterComponent(DocumentEventListener.class, "EventStreamStoreListener");
-        componentManager.unregisterComponent(EventListener.class,
-                DefaultWikiComponentManagerEventListener.EVENT_LISTENER_NAME);
+        observationManager.removeListener("EventStreamStoreListener");
+        observationManager.removeListener(DefaultWikiComponentManagerEventListener.EVENT_LISTENER_NAME);
     }
 
     /**

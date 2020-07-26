@@ -19,17 +19,16 @@
  */
 package org.xwiki.contrib.packager;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.xwiki.extension.internal.validator.AbstractExtensionValidator;
-import org.xwiki.extension.job.InstallRequest;
-import org.xwiki.extension.script.ScriptExtensionRewriter;
-import org.xwiki.platform.wiki.creationjob.WikiCreationRequest;
+import org.xwiki.job.Job;
+import org.xwiki.job.JobException;
+import org.xwiki.job.event.status.JobStatus;
 import org.xwiki.tool.utils.AbstractOldCoreMojo;
 
 /**
@@ -42,8 +41,15 @@ import org.xwiki.tool.utils.AbstractOldCoreMojo;
 @Mojo(name = "wiki", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresProject = true)
 public class WikiMojo extends AbstractOldCoreMojo
 {
+    private static final int WAIT_TIME = 5000;
+
+    private static final int TOTAL_WAIT_TIME = 12 * WAIT_TIME;
+
     @Parameter(property = "wikis")
     protected List<Wiki> wikis;
+
+    @Parameter(property = "parallel", defaultValue = "false")
+    protected boolean parallel;
 
     protected WikiHelper wikiHelper;
 
@@ -60,63 +66,63 @@ public class WikiMojo extends AbstractOldCoreMojo
     public void executeInternal() throws MojoExecutionException
     {
         wikiHelper.nukeListeners();
+        List<Job> ongoingJobs = new ArrayList<>();
 
-        for (Wiki wiki : wikis) {
-            InstallRequest installRequest = new InstallRequest();
+        try {
+            startWikiSetupJobs(wikis, ongoingJobs);
 
-            if (wiki.getId().equals("xwiki")) {
-                // Allow modifying root namespace
-                installRequest.setRootModificationsAllowed(true);
+            int totalWaitTime = 0;
+            while (!ongoingJobs.isEmpty() && totalWaitTime <= TOTAL_WAIT_TIME) {
+                getLog().info("Waiting for jobs to finish ...");
 
-                // Make sure jars are installed on root
-                // TODO: use a less script oriented class
-                ScriptExtensionRewriter rewriter = new ScriptExtensionRewriter();
-                rewriter.installExtensionTypeOnRootNamespace("jar");
-                rewriter.installExtensionTypeOnRootNamespace("webjar");
-                installRequest.setRewriter(rewriter);
-            } else {
-                createWiki(wiki);
+                List<Job> finishedJobs = new ArrayList<>();
+                for (Job job : ongoingJobs) {
+                    if (job.getStatus().getState().equals(JobStatus.State.FINISHED)) {
+                        getLog().info(String.format("Job for wiki [%s] is now finished",
+                            ((WikiSetupJobRequest) job.getRequest()).getWiki().getId()));
+                        finishedJobs.add(job);
+                    }
+                }
+
+                for (Job job : finishedJobs) {
+                    ongoingJobs.remove(job);
+                }
+
+                Thread.sleep(WAIT_TIME);
+
+                totalWaitTime += WAIT_TIME;
             }
+        } catch (InterruptedException e) {
+            getLog().error("Got interrupted while waiting for the completion of the wiki creation jobs", e);
+        }
 
-            installRequest.setProperty(AbstractExtensionValidator.PROPERTY_USERREFERENCE,
-                    wikiHelper.resolveStringDocumentReference(wiki.getOwner()));
-            installRequest.setVerbose(true);
-
-            getLog().info(String.format("Installing extensions on wiki [%s]", wiki.getId()));
-            this.extensionHelper.install(wiki.getExtensions(), installRequest,
-                    String.format("wiki:%s", wiki.getId()), null);
-            wikiHelper.cleanupContext();
-            getLog().info("Installation done");
+        if (ongoingJobs.size() > 0) {
+            throw new MojoExecutionException("Failed to install every wiki.");
+        } else {
+            getLog().info("Successfully installed every wiki.");
         }
     }
 
-    /**
-     * Create a subwiki.
-     * @param wiki the wiki parameter
-     * @throws MojoExecutionException if an error happens
-     */
-    private void createWiki(Wiki wiki) throws MojoExecutionException
+    private void startWikiSetupJobs(List<Wiki> wikis, List<Job> ongoingJobs) throws InterruptedException
     {
-        // In a case of a wiki different from the main wiki, we'll  need to create this wiki first.
-        WikiCreationRequest creationRequest = new WikiCreationRequest();
-        creationRequest.setId(wiki.getId());
-        creationRequest.setWikiId(wiki.getId());
-        creationRequest.setPrettyName(wiki.getPrettyName());
-        creationRequest.setOwnerId(wiki.getOwner());
-        creationRequest.setMembershipType(wiki.getMembership());
-        creationRequest.setUserScope(wiki.getUserScope());
-        creationRequest.setTemplate(wiki.isTemplate());
-
-        creationRequest.setMembers(Collections.EMPTY_LIST);
-        creationRequest.setAlias(wiki.getId());
-        creationRequest.setFailOnExist(false);
-
-        try {
-            getLog().info(String.format("Creating wiki [%s]", wiki.getId()));
-            wikiHelper.createWiki(creationRequest).join();
-            getLog().info(String.format("Successfully created wiki [%s]", wiki.getId()));
-        } catch (Exception e) {
-            throw new MojoExecutionException(e.getMessage());
+        for (Wiki wiki : wikis) {
+            try {
+                if (wiki.getId().equals("xwiki") || !parallel) {
+                    setupWikiAsync(wiki).join();
+                } else {
+                    ongoingJobs.add(setupWikiAsync(wiki));
+                }
+            } catch (JobException e) {
+                getLog().error(String.format("Failed to set up wiki [%s]", wiki.getId()), e);
+            }
         }
+    }
+
+    private Job setupWikiAsync(Wiki wiki) throws JobException
+    {
+        WikiSetupJobRequest jobRequest = new WikiSetupJobRequest();
+        jobRequest.setWiki(wiki);
+
+        return  wikiHelper.getJobExecutor().execute(WikiSetupJob.WIKI_SETUP_JOB_TYPE, jobRequest);
     }
 }

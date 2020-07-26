@@ -1,1 +1,2 @@
 org.xwiki.contrib.packager.WikiHelper
+org.xwiki.contrib.packager.WikiSetupJob
